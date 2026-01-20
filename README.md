@@ -1,20 +1,78 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Eternal Echo - 基于边缘计算的数字生命遗迹系统
 
-# Run and deploy your AI Studio app
-
-This contains everything you need to run your app locally.
-
-View your app in AI Studio: https://ai.studio/apps/drive/1gTjZWH4-pJlQ6qEnwzQZ3whJ_yLrRgFB
-
-## Run Locally
-
-**Prerequisites:**  Node.js
+> **本项目由阿里云ESA提供加速、计算和保护**  
+<img width="7534" height="844" alt="图片" src="https://github.com/user-attachments/assets/9bfb95f0-f0e7-4896-b530-9678e32b17f3" />
 
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+---
+
+## 📖 项目简介
+
+**Eternal Echo** 是一个前瞻性的数字遗产管理平台，旨在解决数字时代的终极难题：当我们离开这个世界，我们的数字足迹（社交媒体、照片、思想）该何去何从？
+
+不同于传统的云存储或简单的定时发送邮件，Eternal Echo 构建了一套完整的**“生前预置、边缘托管、去中心化触发”**的技术范式。用户可以在生前以完全隐私的方式策划自己的数字悼念空间，通过密钥分片技术分发给亲友，并将加密数据托管在阿里云 ESA 全球边缘网络中。当生命的时钟停止，边缘网络将成为守护记忆的最后一道防线。
+
+---
+
+## 🏆 项目亮点（评分维度解析）
+
+### 1. 实用性 (Practicality)
+**“解决数字时代的继承断层”**
+*   **痛点解决**：现代人拥有海量数字资产，但传统继承方式（遗嘱、密码本）在面对双重验证和隐私保护时显得脆弱且尴尬。
+*   **社会价值**：为生者提供情感慰藉，为逝者保留数字尊严。它提供了一个安全、优雅的渠道，让人们能够有尊严地处理自己的“数字身后事”。
+*   **真实场景**：支持家人、挚友、同学分级授权。不仅用于遗嘱，也可用于封存“给未来自己的一封信”或“时间胶囊”，具有广泛的应用场景。
+
+### 2. 创意性 (Creativity)
+**“技术与哲学的浪漫耦合”**
+*   **仪式感设计**：引入 Shamir's Secret Sharing (密钥分片) 概念，将“解锁遗产”变成一种需要多人见证的仪式，而非冷冰冰的代码执行。
+*   **AI 情感重构**：集成大模型（DeepSeek via 阿里云百炼），辅助用户将碎片化的记忆重构为深情的自传章节，让冷数据变成有温度的故事。
+*   **沉浸式体验**：提供“深邃星空”、“旧时光”、“赛博永生”等多种美学主题，利用边缘渲染技术，打造如同电影般的悼念空间访问体验。
+
+### 3. 技术深度 (Technical Depth)
+**“ESA 边缘全栈能力的教科书级应用”**
+本项目并未依赖传统的中心化服务器，而是深度构建在 **阿里云 ESA (Edge Security Acceleration)** 架构之上：
+*   **ESA Edge Functions (边缘函数)**：核心业务逻辑（身份验证、ACL控制、数据组装）全部下沉至边缘节点运行。利用边缘计算的低延迟特性，实现毫秒级的全球访问响应，同时利用函数的隔离环境保障隐私计算安全。
+*   **ESA KV (边缘键值存储)**：作为分布式的“数字保险库”。利用 KV 的全球强一致性和高并发能力，存储加密后的遗产切片及访客互动数据。
+*   **Zero-Knowledge (零知识隐私架构)**：实施严格的端到端加密（E2EE）。数据在用户浏览器本地通过 AES-256-GCM 加密后才上传，平台方（及边缘节点）仅存储密文，甚至连开发人员也无法窥探用户隐私。
+*   **Global Acceleration (全球加速)**：利用 ESA 的全球节点网络，确保无论亲友身在何处，都能流畅地访问这份珍贵的记忆。
+
+---
+
+## 🛠️ 技术栈
+
+*   **基础设施**: Alibaba Cloud ESA (Functions, KV, Pages)
+*   **前端框架**: React 18 + TypeScript + Vite
+*   **UI/UX**: Tailwind CSS + Framer Motion (Animations)
+*   **加密安全**: Web Crypto API (AES-GCM, SHA-256)
+*   **AI 能力**: Alibaba Cloud Bailian (DeepSeek Model)
+
+---
+
+## 🚀 部署指南
+
+本项目采用 ESA `Pages` + `Functions` 一体化部署模式。
+
+1.  **配置 KV**: 在阿里云 ESA 控制台创建名为 `ETERNAL_VAULT_KV` 的存储空间。
+2.  **配置文件**: 确保 `esa.jsonc` 中填写了正确的 KV Namespace ID。
+3.  **上传部署**:
+    *   将代码推送到 GitHub。
+    *   在 ESA 控制台关联仓库，系统将自动识别构建配置。
+    *   构建命令: `npm run build`
+    *   输出目录: `dist`
+4.  **访问**: 部署完成后，通过分配的 `*.esa.io` 域名即可访问。
+
+*(详细步骤请参考项目内的 `ESA_DEPLOY_MANUAL.md`)*
+
+---
+
+## ⚠️ 参赛声明与免责条款
+
+### 作品要求声明
+1.  **原创性声明**：本网站及相关代码均为参赛团队原创，未侵犯任何第三方的版权、商标及隐私权。如发现抄袭、作弊、伪造信息等行为，主办方有权取消参赛资格。
+2.  **合规性声明**：本项目内容健康合规，严格遵守国家法律法规，不得含有任何违法、暴力、仇恨、误导或色情等不当信息。
+3.  **隐私承诺**：本项目采用端到端加密技术，致力于保护用户隐私。但在比赛演示环境中，请勿上传真实的银行密码或极度敏感的个人信息。
+
+---
+
+> *"在永恒的黑夜中，只有记忆是唯一的星光。"*  
+> —— **Eternal Echo Team**
