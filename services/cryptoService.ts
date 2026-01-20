@@ -30,9 +30,10 @@ export class CryptoService {
       encodedData
     );
 
+    // FIX: Use iv.buffer explicitly and ensure type compatibility
     return {
       ciphertext: this.arrayBufferToBase64(encryptedContent),
-      iv: this.arrayBufferToBase64(iv),
+      iv: this.arrayBufferToBase64(iv.buffer),
     };
   }
 
@@ -67,7 +68,8 @@ export class CryptoService {
   }
 
   // Helpers
-  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+  // FIX: Accept ArrayBufferLike to handle strict Typescript checks on Uint8Array.buffer
+  private arrayBufferToBase64(buffer: ArrayBuffer | ArrayBufferLike): string {
     let binary = '';
     const bytes = new Uint8Array(buffer);
     const len = bytes.byteLength;
