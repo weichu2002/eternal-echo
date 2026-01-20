@@ -116,15 +116,15 @@ export const Vault: React.FC<VaultProps> = ({ legacyData, onDeployComplete }) =>
       </div>
 
       <div className="mt-12 w-full max-w-lg bg-black/40 border border-gray-800 rounded p-4 font-mono text-xs text-left h-48 overflow-y-auto text-green-500/80">
-        {step >= 0 && <p>> 正在初始化加密引擎...</p>}
-        {step >= 1 && <p>> 数据载荷已加密。大小：{packet?.ciphertext.length} 字节。</p>}
-        {step >= 1 && <p>> 正在绑定访问控制列表 (ACL)...</p>}
-        {step >= 1 && <p>> 生成密钥哈希: 家人(SHA256), 朋友(SHA256), 同学(SHA256)</p>}
-        {step >= 2 && <p>> 正在连接阿里云 ESA 边缘网络...</p>}
-        {step >= 2 && <p>> 正在复制到节点：ESA-Singapore-01... 完成</p>}
-        {step >= 2 && <p>> 正在复制到节点：ESA-Frankfurt-04... 完成</p>}
-        {step >= 2 && <p>> 正在复制到节点：ESA-SiliconValley-09... 完成</p>}
-        {step >= 3 && <p>> <span className="text-neon">保险库已就绪。状态：FROZEN。</span></p>}
+        {step >= 0 && <p>&gt; 正在初始化加密引擎...</p>}
+        {step >= 1 && <p>&gt; 数据载荷已加密。大小：{packet?.ciphertext.length} 字节。</p>}
+        {step >= 1 && <p>&gt; 正在绑定访问控制列表 (ACL)...</p>}
+        {step >= 1 && <p>&gt; 生成密钥哈希: 家人(SHA256), 朋友(SHA256), 同学(SHA256)</p>}
+        {step >= 2 && <p>&gt; 正在连接阿里云 ESA 边缘网络...</p>}
+        {step >= 2 && <p>&gt; 正在复制到节点：ESA-Singapore-01... 完成</p>}
+        {step >= 2 && <p>&gt; 正在复制到节点：ESA-Frankfurt-04... 完成</p>}
+        {step >= 2 && <p>&gt; 正在复制到节点：ESA-SiliconValley-09... 完成</p>}
+        {step >= 3 && <p>&gt; <span className="text-neon">保险库已就绪。状态：FROZEN。</span></p>}
       </div>
     </div>
   );
