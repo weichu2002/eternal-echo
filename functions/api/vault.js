@@ -69,8 +69,10 @@ export default {
              interactionData.tributes.push(body.payload.data);
           }
 
-          // 3. 写回 KV
-          await env.ETERNAL_VAULT_KV.put(interactionKey, JSON.stringify(interactionData));
+          // 3. 写回 KV (Fix: Add Explicit TTL to ensure persistence)
+          await env.ETERNAL_VAULT_KV.put(interactionKey, JSON.stringify(interactionData), {
+             expirationTtl: 31536000 // 1 year
+          });
           
           return new Response(JSON.stringify({ success: true, mode: "append", data: interactionData }), { status: 200, headers });
         }

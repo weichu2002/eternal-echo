@@ -17,7 +17,10 @@ const InteractionPanel = ({
   accessRole: AccessLevel | 'owner';
   onAddTribute: (type: 'candle' | 'flower', msg: string) => void; 
 }) => {
-  const [data, setData] = useState<InteractionData>({ logs: [], tributes: [] });
+  // Split state into Server Data (Source of Truth) and Local Data (Pending)
+  const [serverData, setServerData] = useState<InteractionData>({ logs: [], tributes: [] });
+  const [localTributes, setLocalTributes] = useState<Tribute[]>([]);
+  
   const [message, setMessage] = useState('');
   const [activeType, setActiveType] = useState<'candle' | 'flower' | null>(null);
 
@@ -25,19 +28,18 @@ const InteractionPanel = ({
     // Poll for interactions
     const fetch = async () => {
       const d = await esaService.fetchInteractions();
-      setData(d);
+      setServerData(d);
     };
     fetch();
-    const interval = setInterval(fetch, 10000); // Poll every 10s
+    const interval = setInterval(fetch, 5000); // Poll every 5s for faster updates
     return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = () => {
     if (activeType) {
       onAddTribute(activeType, message);
-      setMessage('');
-      setActiveType(null);
-      // Optimistic update
+      
+      // Create Local Pending Tribute
       const newTribute: Tribute = {
           id: Date.now().toString(),
           type: activeType,
@@ -45,7 +47,12 @@ const InteractionPanel = ({
           timestamp: Date.now(),
           fromGroup: accessRole
       };
-      setData(prev => ({ ...prev, tributes: [...prev.tributes, newTribute] }));
+      
+      // Add to local state to prevent "disappearing" effect during polling gap
+      setLocalTributes(prev => [...prev, newTribute]);
+      
+      setMessage('');
+      setActiveType(null);
     }
   };
 
@@ -57,6 +64,14 @@ const InteractionPanel = ({
       'owner': '主人'
   };
 
+  // MERGE & DEDUPLICATE STRATEGY
+  // Combine server tributes and local tributes, filter out duplicates by ID
+  const displayTributes = [...serverData.tributes, ...localTributes]
+    .filter((item, index, self) => 
+        index === self.findIndex((t) => t.id === item.id)
+    )
+    .sort((a, b) => a.timestamp - b.timestamp); // Keep chronological order
+
   return (
     <div className="border-t border-gray-800 bg-black/80 text-gray-300 py-16 px-6">
       <div className="max-w-4xl mx-auto">
@@ -64,7 +79,7 @@ const InteractionPanel = ({
         
         {/* Tributes Display */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-            {data.tributes.slice(-8).map(t => (
+            {displayTributes.slice(-8).map(t => (
                 <div key={t.id} className="bg-charcoal/50 p-4 rounded-lg border border-gray-800 flex flex-col items-center text-center animate-fade-in">
                     <div className={`mb-2 ${t.type === 'candle' ? 'text-orange-400 animate-pulse-slow' : 'text-pink-400'}`}>
                         {t.type === 'candle' ? <IconFlame className="w-8 h-8" /> : <IconHeart className="w-8 h-8" />}
@@ -74,7 +89,7 @@ const InteractionPanel = ({
                     <div className="text-xs text-gray-600 mt-2">- 来自{groupNameMap[t.fromGroup] || '访客'}</div>
                 </div>
             ))}
-            {data.tributes.length === 0 && (
+            {displayTributes.length === 0 && (
                 <div className="col-span-full text-center text-gray-600 text-sm py-8">
                     暂无留念，点亮第一束光吧。
                 </div>
@@ -83,7 +98,7 @@ const InteractionPanel = ({
 
         {/* Logs Summary */}
         <div className="text-center text-xs text-gray-600 mb-12 font-mono">
-            {data.logs.length} 次回响 · 最近一次: {data.logs.length > 0 ? new Date(data.logs[data.logs.length - 1].timestamp).toLocaleString() : 'N/A'}
+            {serverData.logs.length} 次回响 · 最近一次: {serverData.logs.length > 0 ? new Date(serverData.logs[serverData.logs.length - 1].timestamp).toLocaleString() : 'N/A'}
         </div>
 
         {/* Action Area */}
