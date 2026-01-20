@@ -1,25 +1,147 @@
 import React, { useEffect, useState } from 'react';
-import { EncryptedPacket, DigitalLegacy, VaultStatus, ThemeType, AccessLevel, RoleKeys, Chapter } from '../types';
+import { EncryptedPacket, DigitalLegacy, VaultStatus, ThemeType, AccessLevel, RoleKeys, Chapter, InteractionData, Tribute } from '../types';
 import { esaService } from '../services/esaService';
-import { IconLock, IconKey, IconZap, IconFeather } from './Icons';
+import { IconLock, IconKey, IconZap, IconFeather, IconFlame, IconHeart } from './Icons';
 
 interface ViewerProps {
   isOwnerPreview?: boolean; 
   previewData?: DigitalLegacy; 
 }
 
+// --- MEMORY WALL COMPONENT (INTERACTIONS) ---
+
+const InteractionPanel = ({ 
+  accessRole, 
+  onAddTribute 
+}: { 
+  accessRole: AccessLevel | 'owner';
+  onAddTribute: (type: 'candle' | 'flower', msg: string) => void; 
+}) => {
+  const [data, setData] = useState<InteractionData>({ logs: [], tributes: [] });
+  const [message, setMessage] = useState('');
+  const [activeType, setActiveType] = useState<'candle' | 'flower' | null>(null);
+
+  useEffect(() => {
+    // Poll for interactions
+    const fetch = async () => {
+      const d = await esaService.fetchInteractions();
+      setData(d);
+    };
+    fetch();
+    const interval = setInterval(fetch, 10000); // Poll every 10s
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleSubmit = () => {
+    if (activeType) {
+      onAddTribute(activeType, message);
+      setMessage('');
+      setActiveType(null);
+      // Optimistic update
+      const newTribute: Tribute = {
+          id: Date.now().toString(),
+          type: activeType,
+          message,
+          timestamp: Date.now(),
+          fromGroup: accessRole
+      };
+      setData(prev => ({ ...prev, tributes: [...prev.tributes, newTribute] }));
+    }
+  };
+
+  const groupNameMap: Record<string, string> = {
+      'family': '家人',
+      'friend': '挚友',
+      'classmate': '同学',
+      'public': '访客',
+      'owner': '主人'
+  };
+
+  return (
+    <div className="border-t border-gray-800 bg-black/80 text-gray-300 py-16 px-6">
+      <div className="max-w-4xl mx-auto">
+        <h3 className="text-2xl font-serif text-center mb-12 text-neon-dim">—— 记忆回响 ——</h3>
+        
+        {/* Tributes Display */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+            {data.tributes.slice(-8).map(t => (
+                <div key={t.id} className="bg-charcoal/50 p-4 rounded-lg border border-gray-800 flex flex-col items-center text-center animate-fade-in">
+                    <div className={`mb-2 ${t.type === 'candle' ? 'text-orange-400 animate-pulse-slow' : 'text-pink-400'}`}>
+                        {t.type === 'candle' ? <IconFlame className="w-8 h-8" /> : <IconHeart className="w-8 h-8" />}
+                    </div>
+                    <div className="text-xs text-gray-500 mb-2">{new Date(t.timestamp).toLocaleDateString()}</div>
+                    {t.message && <div className="text-sm italic text-gray-300">"{t.message}"</div>}
+                    <div className="text-xs text-gray-600 mt-2">- 来自{groupNameMap[t.fromGroup] || '访客'}</div>
+                </div>
+            ))}
+            {data.tributes.length === 0 && (
+                <div className="col-span-full text-center text-gray-600 text-sm py-8">
+                    暂无留念，点亮第一束光吧。
+                </div>
+            )}
+        </div>
+
+        {/* Logs Summary */}
+        <div className="text-center text-xs text-gray-600 mb-12 font-mono">
+            {data.logs.length} 次回响 · 最近一次: {data.logs.length > 0 ? new Date(data.logs[data.logs.length - 1].timestamp).toLocaleString() : 'N/A'}
+        </div>
+
+        {/* Action Area */}
+        {accessRole !== 'owner' && (
+            <div className="bg-gray-900/50 p-6 rounded-xl border border-gray-800 max-w-lg mx-auto">
+                <p className="text-sm text-center mb-4 text-gray-400">留下您的思念，让记忆延续。</p>
+                <div className="flex justify-center gap-4 mb-4">
+                    <button 
+                        onClick={() => setActiveType('candle')}
+                        className={`p-3 rounded-full border transition-all ${activeType === 'candle' ? 'bg-orange-900/30 border-orange-500 text-orange-500' : 'border-gray-700 hover:border-gray-500'}`}
+                    >
+                        <IconFlame />
+                    </button>
+                    <button 
+                        onClick={() => setActiveType('flower')}
+                        className={`p-3 rounded-full border transition-all ${activeType === 'flower' ? 'bg-pink-900/30 border-pink-500 text-pink-500' : 'border-gray-700 hover:border-gray-500'}`}
+                    >
+                        <IconHeart />
+                    </button>
+                </div>
+                
+                {activeType && (
+                    <div className="animate-fade-in">
+                        <input 
+                            type="text" 
+                            maxLength={30}
+                            placeholder="写下一句简短的话 (可选)..."
+                            value={message}
+                            onChange={(e) => setMessage(e.target.value)}
+                            className="w-full bg-black border border-gray-700 rounded px-4 py-2 text-sm text-white mb-4 focus:border-neon outline-none"
+                        />
+                        <button 
+                            onClick={handleSubmit}
+                            className="w-full bg-neon-dim hover:bg-neon text-white py-2 rounded text-sm font-bold transition-colors"
+                        >
+                            发送纪念
+                        </button>
+                    </div>
+                )}
+            </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // --- THEME ENGINE RENDERERS ---
 
 // 1. OBSIDIAN THEME (Minimalist, Dark, Centered)
 const ObsidianRenderer = ({ data, filteredChapters }: { data: DigitalLegacy, filteredChapters: Chapter[] }) => (
-  <div className="bg-obsidian text-gray-300 min-h-screen font-serif selection:bg-white selection:text-black pb-20">
+  <div className="bg-obsidian text-gray-300 min-h-screen font-serif selection:bg-white selection:text-black">
     <header className="pt-20 pb-16 text-center border-b border-white/10 mx-auto max-w-3xl px-6">
       <div className="text-xs tracking-[0.3em] text-gray-500 mb-4 uppercase">The Digital Legacy of</div>
       <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight">{data.ownerName}</h1>
       <div className="h-1 w-20 bg-white mx-auto mb-6"></div>
       <p className="text-gray-500 italic">"在永恒的黑夜中，只有记忆是唯一的星光。"</p>
     </header>
-    <div className="max-w-2xl mx-auto px-6 space-y-20 mt-16">
+    <div className="max-w-2xl mx-auto px-6 space-y-20 mt-16 pb-20">
       {filteredChapters.map((chapter) => (
         <article key={chapter.id} className="animate-fade-in-up">
           {chapter.imageUrl && (
@@ -43,8 +165,8 @@ const ObsidianRenderer = ({ data, filteredChapters }: { data: DigitalLegacy, fil
 
 // 2. ETHEREAL THEME (Magazine, Light, Masonry-feel)
 const EtherealRenderer = ({ data, filteredChapters }: { data: DigitalLegacy, filteredChapters: Chapter[] }) => (
-  <div className="bg-[#f8f9fa] text-gray-900 min-h-screen font-sans pb-20">
-    <div className="max-w-6xl mx-auto px-4 pt-12">
+  <div className="bg-[#f8f9fa] text-gray-900 min-h-screen font-sans">
+    <div className="max-w-6xl mx-auto px-4 pt-12 pb-20">
       <header className="flex flex-col md:flex-row justify-between items-end border-b-2 border-black pb-8 mb-12">
         <div>
           <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-black leading-none">{data.ownerName}</h1>
@@ -82,8 +204,8 @@ const EtherealRenderer = ({ data, filteredChapters }: { data: DigitalLegacy, fil
 
 // 3. WARM THEME (Scrapbook, Organic)
 const WarmRenderer = ({ data, filteredChapters }: { data: DigitalLegacy, filteredChapters: Chapter[] }) => (
-  <div className="bg-[#e6dcc8] text-[#4a3b2a] min-h-screen font-serif pb-20 overflow-x-hidden">
-    <div className="max-w-4xl mx-auto px-4 pt-20 relative">
+  <div className="bg-[#e6dcc8] text-[#4a3b2a] min-h-screen font-serif overflow-x-hidden">
+    <div className="max-w-4xl mx-auto px-4 pt-20 pb-20 relative">
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-[#d4c5ad] rounded-full blur-3xl -z-10 opacity-50"></div>
       
@@ -200,6 +322,9 @@ export const Viewer: React.FC<ViewerProps> = ({ isOwnerPreview, previewData }) =
   // Content Filter
   const [accessRole, setAccessRole] = useState<'owner' | AccessLevel | null>(null);
 
+  // Visit Logging Lock
+  const [hasLogged, setHasLogged] = useState(false);
+
   useEffect(() => {
     const init = async () => {
       // 1. Owner Preview (God Mode)
@@ -219,6 +344,15 @@ export const Viewer: React.FC<ViewerProps> = ({ isOwnerPreview, previewData }) =
     init();
   }, [isOwnerPreview, previewData]);
 
+  // Handle logging once unlocked
+  useEffect(() => {
+    if (status === VaultStatus.ACTIVE && accessRole && !hasLogged) {
+        setHasLogged(true);
+        // Fire and forget logging
+        esaService.recordVisit(accessRole);
+    }
+  }, [status, accessRole, hasLogged]);
+
   const handleUnlock = async () => {
     if (!inputKey) return;
     setIsUnlocking(true);
@@ -233,7 +367,6 @@ export const Viewer: React.FC<ViewerProps> = ({ isOwnerPreview, previewData }) =
              const legacy: DigitalLegacy = JSON.parse(mockDataStr);
              
              // --- MOCK KEY VERIFICATION LOGIC ---
-             // Check if input matches specific role keys defined in the legacy data
              let validRole: AccessLevel | null = null;
 
              if (inputKey === legacy.roleKeys.family) validRole = 'family';
@@ -260,6 +393,19 @@ export const Viewer: React.FC<ViewerProps> = ({ isOwnerPreview, previewData }) =
     }, 1500);
   };
 
+  const handleAddTribute = (type: 'candle' | 'flower', msg: string) => {
+    if (accessRole) {
+        const tribute: Tribute = {
+            id: Date.now().toString(), // Client-side ID for simplicity
+            type,
+            message: msg,
+            timestamp: Date.now(),
+            fromGroup: accessRole
+        };
+        esaService.leaveTribute(tribute);
+    }
+  };
+
   // Helper to filter content based on role
   const getFilteredChapters = () => {
     if (!data || !accessRole) return [];
@@ -267,9 +413,9 @@ export const Viewer: React.FC<ViewerProps> = ({ isOwnerPreview, previewData }) =
 
     return data.chapters.filter(ch => {
        if (ch.accessLevel === 'public') return true;
-       if (accessRole === 'family') return ch.accessLevel === 'family'; // Family sees Family + Public
-       if (accessRole === 'friend') return ch.accessLevel === 'friend'; // Friend sees Friend + Public
-       if (accessRole === 'classmate') return ch.accessLevel === 'classmate'; // Classmate sees Classmate + Public
+       if (accessRole === 'family') return ch.accessLevel === 'family'; 
+       if (accessRole === 'friend') return ch.accessLevel === 'friend'; 
+       if (accessRole === 'classmate') return ch.accessLevel === 'classmate'; 
        return false;
     });
   };
@@ -335,17 +481,24 @@ export const Viewer: React.FC<ViewerProps> = ({ isOwnerPreview, previewData }) =
   }
 
   // UNLOCKED VIEW (Theme Engine Active)
-  if (data) {
+  if (data && accessRole) {
     const filtered = getFilteredChapters();
     
-    // Select Renderer based on Theme
+    let content = null;
     switch (data.theme) {
-      case 'ethereal': return <EtherealRenderer data={data} filteredChapters={filtered} />;
-      case 'warm': return <WarmRenderer data={data} filteredChapters={filtered} />;
-      case 'cyber': return <CyberRenderer data={data} filteredChapters={filtered} />;
+      case 'ethereal': content = <EtherealRenderer data={data} filteredChapters={filtered} />; break;
+      case 'warm': content = <WarmRenderer data={data} filteredChapters={filtered} />; break;
+      case 'cyber': content = <CyberRenderer data={data} filteredChapters={filtered} />; break;
       case 'obsidian':
-      default: return <ObsidianRenderer data={data} filteredChapters={filtered} />;
+      default: content = <ObsidianRenderer data={data} filteredChapters={filtered} />; break;
     }
+
+    return (
+        <div className="relative">
+            {content}
+            <InteractionPanel accessRole={accessRole} onAddTribute={handleAddTribute} />
+        </div>
+    );
   }
 
   return null;

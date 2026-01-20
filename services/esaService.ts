@@ -1,7 +1,7 @@
 // This service abstracts the interaction with Alibaba Cloud ESA Edge KV.
 // REAL IMPLEMENTATION: Calls the integrated Edge Function via relative path.
 
-import { EncryptedPacket, VaultStatus, DigitalLegacy } from "../types";
+import { EncryptedPacket, VaultStatus, DigitalLegacy, VisitLog, Tribute, InteractionData, AccessLevel } from "../types";
 
 // 使用相对路径，浏览器会自动指向当前域名下的 /api/vault
 // 这由 esa.jsonc 中的 routes 配置通过 ESA Pages 自动处理路由
@@ -90,7 +90,7 @@ export const esaService = {
       if (response.ok) {
         const json = await response.json();
         if (json.found) {
-          return JSON.parse(json.data);
+          return typeof json.data === 'string' ? JSON.parse(json.data) : json.data;
         }
       }
       throw new Error("KV key not found on Edge");
@@ -99,5 +99,63 @@ export const esaService = {
       const data = localStorage.getItem(KV_NAMESPACE);
       return data ? JSON.parse(data) : null;
     }
+  },
+
+  // --- Interaction Methods ---
+
+  // 记录访问 (匿名)
+  recordVisit: async (group: AccessLevel | 'owner') => {
+    if (group === 'owner') return; // Owner visits don't count as public legacy visits
+    const log: VisitLog = {
+      timestamp: Date.now(),
+      group
+    };
+    
+    try {
+      await fetch(EDGE_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'append_interaction',
+          key: KV_NAMESPACE,
+          payload: { type: 'log', data: log }
+        })
+      });
+    } catch (e) {
+      console.error("Failed to log visit to Edge:", e);
+    }
+  },
+
+  // 留下贡品 (花/烛)
+  leaveTribute: async (tribute: Tribute) => {
+    try {
+      await fetch(EDGE_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'append_interaction',
+          key: KV_NAMESPACE,
+          payload: { type: 'tribute', data: tribute }
+        })
+      });
+    } catch (e) {
+      console.error("Failed to leave tribute on Edge:", e);
+    }
+  },
+
+  // 获取互动数据
+  fetchInteractions: async (): Promise<InteractionData> => {
+    try {
+      const response = await fetch(`${EDGE_API_URL}?key=${KV_NAMESPACE}&type=interactions`);
+      if (response.ok) {
+        const json = await response.json();
+        if (json.found) {
+          return json.data as InteractionData;
+        }
+      }
+    } catch (e) {
+      console.warn("Edge KV interactions check failed:", e);
+    }
+    return { logs: [], tributes: [] };
   }
 };

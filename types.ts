@@ -51,3 +51,23 @@ export interface DeploymentConfig {
   node: string;
   status: string;
 }
+
+// --- Interaction Types ---
+
+export interface VisitLog {
+  timestamp: number;
+  group: AccessLevel | 'owner';
+}
+
+export interface Tribute {
+  id: string;
+  type: 'candle' | 'flower';
+  message?: string;
+  timestamp: number;
+  fromGroup: AccessLevel | 'owner';
+}
+
+export interface InteractionData {
+  logs: VisitLog[];
+  tributes: Tribute[];
+}
