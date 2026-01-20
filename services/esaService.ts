@@ -25,8 +25,8 @@ export const esaService = {
         },
         body: JSON.stringify({
           key: KV_NAMESPACE, 
-          value: JSON.stringify(packet),
-          expirationTTL: 31536000 
+          value: JSON.stringify(packet)
+          // expirationTTL removed for permanent storage
         })
       });
 
@@ -68,7 +68,10 @@ export const esaService = {
   // Check Pulse (Real KV Read)
   checkPulse: async (): Promise<VaultStatus> => {
     try {
-      const response = await fetch(`${EDGE_API_URL}?key=${KV_NAMESPACE}_STATUS`);
+      // Add timestamp to prevent caching
+      const response = await fetch(`${EDGE_API_URL}?key=${KV_NAMESPACE}_STATUS&_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       if (response.ok) {
         const json = await response.json();
         if (json.found) {
@@ -86,7 +89,9 @@ export const esaService = {
   // Retrieve Data (Real KV Read)
   retrieveFromEdge: async (): Promise<EncryptedPacket | null> => {
     try {
-      const response = await fetch(`${EDGE_API_URL}?key=${KV_NAMESPACE}`);
+      const response = await fetch(`${EDGE_API_URL}?key=${KV_NAMESPACE}&_t=${Date.now()}`, {
+        cache: 'no-store'
+      });
       if (response.ok) {
         const json = await response.json();
         if (json.found) {
@@ -146,7 +151,11 @@ export const esaService = {
   // 获取互动数据
   fetchInteractions: async (): Promise<InteractionData> => {
     try {
-      const response = await fetch(`${EDGE_API_URL}?key=${KV_NAMESPACE}&type=interactions`);
+      // Critical: Add cache busting
+      const response = await fetch(`${EDGE_API_URL}?key=${KV_NAMESPACE}&type=interactions&_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (response.ok) {
         const json = await response.json();
         if (json.found) {

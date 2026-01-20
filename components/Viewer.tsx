@@ -15,40 +15,66 @@ const InteractionPanel = ({
   onAddTribute 
 }: { 
   accessRole: AccessLevel | 'owner';
-  onAddTribute: (type: 'candle' | 'flower', msg: string) => void; 
+  onAddTribute: (type: 'candle' | 'flower', msg: string, name?: string) => void; 
 }) => {
   // Split state into Server Data (Source of Truth) and Local Data (Pending)
   const [serverData, setServerData] = useState<InteractionData>({ logs: [], tributes: [] });
-  const [localTributes, setLocalTributes] = useState<Tribute[]>([]);
+  
+  // Initialize local tributes from LocalStorage to handle page refreshes/persistence
+  const [localTributes, setLocalTributes] = useState<Tribute[]>(() => {
+    try {
+      const saved = localStorage.getItem('eternal_echo_local_tributes');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   
   const [message, setMessage] = useState('');
+  const [visitorName, setVisitorName] = useState('');
   const [activeType, setActiveType] = useState<'candle' | 'flower' | null>(null);
+
+  // Sync local tributes to LocalStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('eternal_echo_local_tributes', JSON.stringify(localTributes));
+  }, [localTributes]);
 
   useEffect(() => {
     // Poll for interactions
     const fetch = async () => {
       const d = await esaService.fetchInteractions();
       setServerData(d);
+      
+      // Cleanup Strategy:
+      // If a local tribute is found in the server data, remove it from local state
+      // This prevents double counting logic (though dedupe handles it) and keeps local storage clean.
+      setLocalTributes(prev => {
+         const serverIds = new Set(d.tributes.map(t => t.id));
+         // Keep only those NOT yet in server
+         return prev.filter(t => !serverIds.has(t.id));
+      });
     };
+    
     fetch();
-    const interval = setInterval(fetch, 5000); // Poll every 5s for faster updates
+    const interval = setInterval(fetch, 5000); // Poll every 5s
     return () => clearInterval(interval);
   }, []);
 
   const handleSubmit = () => {
     if (activeType) {
-      onAddTribute(activeType, message);
+      onAddTribute(activeType, message, visitorName);
       
       // Create Local Pending Tribute
       const newTribute: Tribute = {
-          id: Date.now().toString(),
+          id: Date.now().toString(), // Using timestamp as ID
           type: activeType,
           message,
+          visitorName: visitorName || undefined,
           timestamp: Date.now(),
           fromGroup: accessRole
       };
       
-      // Add to local state to prevent "disappearing" effect during polling gap
+      // Add to local state
       setLocalTributes(prev => [...prev, newTribute]);
       
       setMessage('');
@@ -65,7 +91,6 @@ const InteractionPanel = ({
   };
 
   // MERGE & DEDUPLICATE STRATEGY
-  // Combine server tributes and local tributes, filter out duplicates by ID
   const displayTributes = [...serverData.tributes, ...localTributes]
     .filter((item, index, self) => 
         index === self.findIndex((t) => t.id === item.id)
@@ -80,13 +105,20 @@ const InteractionPanel = ({
         {/* Tributes Display */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
             {displayTributes.slice(-8).map(t => (
-                <div key={t.id} className="bg-charcoal/50 p-4 rounded-lg border border-gray-800 flex flex-col items-center text-center animate-fade-in">
+                <div key={t.id} className="bg-charcoal/50 p-4 rounded-lg border border-gray-800 flex flex-col items-center text-center animate-fade-in group hover:border-neon/30 transition-colors">
                     <div className={`mb-2 ${t.type === 'candle' ? 'text-orange-400 animate-pulse-slow' : 'text-pink-400'}`}>
                         {t.type === 'candle' ? <IconFlame className="w-8 h-8" /> : <IconHeart className="w-8 h-8" />}
                     </div>
                     <div className="text-xs text-gray-500 mb-2">{new Date(t.timestamp).toLocaleDateString()}</div>
-                    {t.message && <div className="text-sm italic text-gray-300">"{t.message}"</div>}
-                    <div className="text-xs text-gray-600 mt-2">- 来自{groupNameMap[t.fromGroup] || '访客'}</div>
+                    {t.message && <div className="text-sm italic text-gray-300 mb-1">"{t.message}"</div>}
+                    
+                    {/* Visitor Signature Display */}
+                    <div className="text-xs text-neon mt-1 font-semibold">
+                      {t.visitorName ? t.visitorName : (groupNameMap[t.fromGroup] || '访客')}
+                    </div>
+                    {t.visitorName && (
+                       <div className="text-[10px] text-gray-600 scale-90">({groupNameMap[t.fromGroup]})</div>
+                    )}
                 </div>
             ))}
             {displayTributes.length === 0 && (
@@ -121,14 +153,22 @@ const InteractionPanel = ({
                 </div>
                 
                 {activeType && (
-                    <div className="animate-fade-in">
+                    <div className="animate-fade-in space-y-3">
+                        <input 
+                            type="text" 
+                            maxLength={10}
+                            placeholder="您的名字 (可选)"
+                            value={visitorName}
+                            onChange={(e) => setVisitorName(e.target.value)}
+                            className="w-full bg-black border border-gray-700 rounded px-4 py-2 text-sm text-white focus:border-neon outline-none"
+                        />
                         <input 
                             type="text" 
                             maxLength={30}
                             placeholder="写下一句简短的话 (可选)..."
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
-                            className="w-full bg-black border border-gray-700 rounded px-4 py-2 text-sm text-white mb-4 focus:border-neon outline-none"
+                            className="w-full bg-black border border-gray-700 rounded px-4 py-2 text-sm text-white focus:border-neon outline-none"
                         />
                         <button 
                             onClick={handleSubmit}
@@ -408,12 +448,13 @@ export const Viewer: React.FC<ViewerProps> = ({ isOwnerPreview, previewData }) =
     }, 1500);
   };
 
-  const handleAddTribute = (type: 'candle' | 'flower', msg: string) => {
+  const handleAddTribute = (type: 'candle' | 'flower', msg: string, name?: string) => {
     if (accessRole) {
         const tribute: Tribute = {
             id: Date.now().toString(), // Client-side ID for simplicity
             type,
             message: msg,
+            visitorName: name,
             timestamp: Date.now(),
             fromGroup: accessRole
         };

@@ -63,6 +63,7 @@ export interface Tribute {
   id: string;
   type: 'candle' | 'flower';
   message?: string;
+  visitorName?: string; // 新增：访客署名
   timestamp: number;
   fromGroup: AccessLevel | 'owner';
 }
